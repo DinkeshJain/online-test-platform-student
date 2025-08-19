@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/button';
-import { LogOut, User, Settings, Menu, X, Home, FileText, BarChart } from 'lucide-react';
+import { LogOut, User, Settings, Menu, X, Home } from 'lucide-react';
 
 // Get the server base URL for static assets
 const SERVER_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://online-test-platform-server-1q1h.onrender.com';
@@ -58,28 +58,6 @@ const Navbar = () => {
                 >
                   <Home className="w-4 h-4 mr-2" />
                   Dashboard
-                </NavLink>
-                <NavLink
-                  to="/tests"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md flex items-center"
-                      : "text-gray-700 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center"
-                  }
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Tests
-                </NavLink>
-                <NavLink
-                  to="/results"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md flex items-center"
-                      : "text-gray-700 hover:text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center"
-                  }
-                >
-                  <BarChart className="w-4 h-4 mr-2" />
-                  Results
                 </NavLink>
 
                 <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200">

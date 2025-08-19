@@ -62,10 +62,14 @@ const TakeTest = () => {
     if (screenfull.isEnabled && screenfull.isFullscreen) screenfull.exit();
     const submissionData = {
       testId,
-      answers: testRef.current.questions.map(question => ({
+      answers: testRef.current.questions.map((question, index) => ({
         questionId: question._id,
         selectedAnswer: answers[question._id] !== undefined ? answers[question._id] : null,
-        markedForReview: reviewFlags[question._id] || false
+        markedForReview: reviewFlags[question._id] || false,
+        // Include original question number from the question object
+        originalQuestionNumber: question.originalQuestionNumber || question.questionNumber || (index + 1),
+        // NEW: Include shuffled to original mapping for correct answer checking
+        shuffledToOriginal: question.shuffledToOriginal || []
       })),
       timeSpent: (testRef.current.duration * 60) - timeLeftRef.current,
       testStartedAt,
@@ -85,6 +89,7 @@ const TakeTest = () => {
         }
       }
     };
+
     try {
       await api.post('/submissions', submissionData);
       toast.success(
@@ -92,7 +97,6 @@ const TakeTest = () => {
           <CheckCircle className="h-5 w-5" />
           <div>
             <div className="font-medium">Test submitted successfully!</div>
-            <div className="text-sm opacity-90">Your results will be available once reviewed by the admin.</div>
           </div>
         </div>,
         { duration: 4000 }
