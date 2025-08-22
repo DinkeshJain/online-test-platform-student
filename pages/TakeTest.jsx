@@ -13,6 +13,7 @@ const TakeTest = () => {
   const { testId } = useParams();
   const navigate = useNavigate();
 
+  // Existing state
   const [test, setTest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,6 +32,13 @@ const TakeTest = () => {
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [testStartedAt, setTestStartedAt] = useState(null);
 
+  // NEW: Progress tracking state
+  const [lastAutoSave, setLastAutoSave] = useState(null);
+  const [autoSaveCount, setAutoSaveCount] = useState(0);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Refs for preventing re-renders in event handlers
   const testStartedRef = useRef(false);
   const testSubmittedRef = useRef(false);
@@ -39,6 +47,10 @@ const TakeTest = () => {
   const fullscreenExitsRef = useRef(0);
   const timeLeftRef = useRef(0);
   const testRef = useRef(null);
+
+  // NEW: Auto-save and heartbeat interval refs
+  const autoSaveIntervalRef = useRef(null);
+  const heartbeatIntervalRef = useRef(null);
 
   useEffect(() => { testStartedRef.current = testStarted; }, [testStarted]);
   useEffect(() => { testSubmittedRef.current = testSubmitted; }, [testSubmitted]);
@@ -56,10 +68,159 @@ const TakeTest = () => {
     setProctoringViolations(prev => [...prev, violation]);
   }, []);
 
+  // NEW: Auto-save functionality with test structure preservation
+  const autoSaveProgress = useCallback(async () => {
+    if (!testStarted || testSubmitted || !test) return;
+
+    try {
+      setIsSaving(true);
+      const autoSaveData = {
+        testId,
+        answers,
+        reviewFlags,
+        currentQuestionIndex,
+        timeLeft: timeLeftRef.current,
+        testStartedAt,
+
+        // NEW: Include the entire test structure as it was presented to the student
+        testStructure: {
+          ...test,
+          questions: test.questions // This preserves the exact order and structure
+        }
+      };
+
+      const response = await api.post('/submissions/auto-save', autoSaveData);
+
+      setLastAutoSave(new Date());
+      setAutoSaveCount(response.data.autoSaveCount);
+
+      console.log('Auto-save successful');
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+      // Don't show error to user unless it's critical
+      if (error.response?.status === 400) {
+        // Test might be submitted or expired
+        setError(error.response.data.message);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [testId, answers, reviewFlags, currentQuestionIndex, testStarted, testSubmitted, test, testStartedAt]);
+
+  // NEW: Manual save function
+  const manualSave = useCallback(async () => {
+    if (!testStarted || testSubmitted || !test) return;
+
+    try {
+      setIsSaving(true);
+      await autoSaveProgress();
+      toast.success('Progress saved successfully!');
+    } catch (error) {
+      toast.error('Failed to save progress');
+    }
+  }, [autoSaveProgress, testStarted, testSubmitted, test]);
+
+  // NEW: Heartbeat functionality for crash detection
+  const sendHeartbeat = useCallback(async () => {
+    if (!testStarted || testSubmitted || !test) return;
+
+    try {
+      await api.post(`/submissions/heartbeat/${testId}`);
+    } catch (error) {
+      console.error('Heartbeat failed:', error);
+    }
+  }, [testId, testStarted, testSubmitted, test]);
+
+  // NEW: Set up auto-save and heartbeat intervals
+  useEffect(() => {
+    if (testStarted && !testSubmitted) {
+      // Auto-save every 60 seconds (1 minute)
+      autoSaveIntervalRef.current = setInterval(autoSaveProgress, 60000);
+
+      // Heartbeat every 30 seconds
+      heartbeatIntervalRef.current = setInterval(sendHeartbeat, 30000);
+
+      return () => {
+        if (autoSaveIntervalRef.current) {
+          clearInterval(autoSaveIntervalRef.current);
+        }
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+      };
+    }
+  }, [testStarted, testSubmitted, autoSaveProgress, sendHeartbeat]);
+
+  // NEW: Resume test function - uses saved test structure
+  // In the resumeTest function, add API call to increment resume count:
+
+  // NEW: Resume test function - calls backend to increment resume count
+  const resumeTest = useCallback(async () => {
+    if (!savedProgress) return;
+
+    try {
+      // FIXED: Call backend to increment resume count only when user clicks Resume
+      await api.post(`/submissions/resume-test/${testId}`);
+
+      // NEW: If we have saved test structure, use it instead of current test
+      if (savedProgress.savedTestStructure) {
+        console.log('Restoring saved test structure');
+        setTest(savedProgress.savedTestStructure);
+      }
+
+      // Restore saved progress
+      setAnswers(savedProgress.answers);
+      setReviewFlags(savedProgress.reviewFlags);
+      setCurrentQuestionIndex(savedProgress.currentQuestionIndex);
+      setTimeLeft(savedProgress.timeLeft);
+      setTestStartedAt(new Date(savedProgress.testStartedAt));
+      setAutoSaveCount(savedProgress.autoSaveCount);
+      setTestStarted(true);
+      setShowResumeDialog(false);
+
+      const minutes = Math.floor(savedProgress.timeLeft / 60);
+      const seconds = savedProgress.timeLeft % 60;
+      toast.success(`Test resumed! Time left: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+
+      // Enter fullscreen if possible
+      if (screenfull.isEnabled) {
+        try {
+          screenfull.request();
+          setIsInFullscreen(true);
+        } catch (error) {
+          console.error('Failed to enter fullscreen:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error resuming test:', error);
+      toast.error('Error resuming test');
+    }
+  }, [savedProgress, testId]);
+
+
+  // NEW: Start fresh test function
+  const startFreshTest = useCallback(async () => {
+    // Clear any saved progress and start fresh
+    setShowResumeDialog(false);
+    setSavedProgress(null);
+
+    // Start normally with your existing logic
+    const fullscreenSuccess = await enterFullscreen();
+    if (!fullscreenSuccess) {
+      toast.error('Fullscreen required.');
+      return;
+    }
+    setTestStartedAt(new Date().toISOString());
+    setIsInFullscreen(true);
+    toast.success('Test started!');
+    setTestStarted(true);
+  }, []);
+
   const handleSubmitTest = useCallback(async () => {
     if (testSubmittedRef.current) return;
     setTestSubmitted(true);
     if (screenfull.isEnabled && screenfull.isFullscreen) screenfull.exit();
+
     const submissionData = {
       testId,
       answers: testRef.current.questions.map((question, index) => ({
@@ -108,10 +269,43 @@ const TakeTest = () => {
     }
   }, [testId, answers, reviewFlags, testStartedAt, proctoringViolations, navigate]);
 
-  // Fetch test only on mount/change
+  // NEW: Enhanced useEffect for loading test and checking for saved progress
   useEffect(() => {
-    const fetchTest = async () => {
+    const loadTestAndProgress = async () => {
       try {
+        setLoading(true);
+
+        // First, check for saved progress
+        try {
+          const progressResponse = await api.get(`/submissions/load-progress/${testId}`);
+
+          if (progressResponse.data.hasProgress) {
+            const savedProgressData = progressResponse.data.progress;
+            setSavedProgress(savedProgressData);
+            setShowResumeDialog(true);
+
+            // NEW: If we have saved test structure, use it; otherwise load fresh
+            if (savedProgressData.savedTestStructure) {
+              console.log('Found saved test structure, using it');
+              setTest(savedProgressData.savedTestStructure);
+              setTimeLeft(savedProgressData.savedTestStructure.duration * 60);
+            } else {
+              // Fallback: load test data normally
+              console.log('No saved test structure, loading fresh');
+              const testResponse = await api.get(`/tests/${testId}`);
+              setTest(testResponse.data.test);
+              setTimeLeft(testResponse.data.test.duration * 60);
+            }
+
+            setLoading(false);
+            return;
+          }
+        } catch (progressError) {
+          // If progress loading fails, continue with normal test loading
+          console.log('No saved progress found or error loading progress');
+        }
+
+        // Normal test loading if no progress to resume
         const response = await api.get(`/tests/${testId}`);
         setTest(response.data.test);
         setTimeLeft(response.data.test.duration * 60);
@@ -123,7 +317,8 @@ const TakeTest = () => {
         setLoading(false);
       }
     };
-    fetchTest();
+
+    loadTestAndProgress();
   }, [testId]);
 
   // Timer effect
@@ -143,7 +338,7 @@ const TakeTest = () => {
     return () => clearTimeout(timer);
   }, [testStarted, timeLeft, testSubmitted, handleSubmitTest]);
 
-  // Keyboard and right-click prevention - only once
+  // Keyboard and right-click prevention - only once (UPDATED: Removed Alt+Tab auto-submit)
   useEffect(() => {
     const handleContextMenu = (e) => e.preventDefault();
     const handleKeyDown = (e) => {
@@ -154,8 +349,6 @@ const TakeTest = () => {
         (e.ctrlKey && e.key === 'c') ||
         (e.ctrlKey && e.key === 'v') ||
         (e.ctrlKey && e.key === 'x') ||
-        (e.altKey && e.key === 'Tab') ||
-        (e.altKey && e.code === 'Tab') ||
         (e.ctrlKey && e.key === 'Tab') ||
         (e.ctrlKey && e.key === 'w') ||
         (e.ctrlKey && e.key === 't') ||
@@ -168,6 +361,14 @@ const TakeTest = () => {
         if (testStartedRef.current) {
           recordViolation('keyboard_shortcut', `Attempted to use: ${e.key}`);
           toast.error('Keyboard shortcuts are disabled during the test!');
+        }
+      }
+      // NEW: Only record Alt+Tab but don't auto-submit
+      if (e.altKey && (e.key === 'Tab' || e.code === 'Tab')) {
+        e.preventDefault();
+        if (testStartedRef.current) {
+          recordViolation('alt_tab', 'Attempted Alt+Tab');
+          toast.warning('Alt+Tab detected - please stay focused on the test!');
         }
       }
     };
@@ -267,12 +468,7 @@ const TakeTest = () => {
   };
 
   const startTest = async () => {
-    const fullscreenSuccess = await enterFullscreen();
-    if (!fullscreenSuccess) { toast.error('Fullscreen required.'); return; }
-    setTestStartedAt(new Date().toISOString());
-    setIsInFullscreen(true);
-    toast.success('Test started!');
-    setTestStarted(true);
+    await startFreshTest();
   };
 
   const reEnterFullscreen = async () => {
@@ -287,6 +483,11 @@ const TakeTest = () => {
 
   const handleAnswerChange = (questionId, answerIndex) => {
     setAnswers(prev => ({ ...prev, [questionId]: answerIndex }));
+    setReviewFlags(prev => {
+      const newFlags = { ...prev };
+      delete newFlags[questionId];
+      return newFlags;
+    });
   };
 
   const getQuestionStatus = (questionIndex) => {
@@ -310,8 +511,18 @@ const TakeTest = () => {
     }
   };
 
-
   const saveAndNext = () => {
+    const currentQuestion = test.questions[currentQuestionIndex];
+    const questionId = currentQuestion._id;
+    const hasAnswer = answers[questionId] !== undefined;
+
+    if (hasAnswer) {
+      setReviewFlags(prev => {
+        const newFlags = { ...prev };
+        delete newFlags[questionId];
+        return newFlags;
+      });
+    }
     if (currentQuestionIndex < test.questions.length - 1)
       setCurrentQuestionIndex(currentQuestionIndex + 1);
   };
@@ -358,6 +569,55 @@ const TakeTest = () => {
     );
   }
 
+  // NEW: Resume dialog (inserted before the test start screen)
+  if (showResumeDialog && savedProgress) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <Card className="w-full max-w-md mx-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Save className="w-5 h-5" />
+              Resume Previous Progress?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 text-sm">
+              <p><strong>Last saved:</strong> {new Date(savedProgress.lastSavedAt).toLocaleString()}</p>
+              <p><strong>Time left:</strong> {Math.floor(savedProgress.timeLeft / 60)}:{(savedProgress.timeLeft % 60).toString().padStart(2, '0')}</p>
+              <p><strong>Progress:</strong> Question {savedProgress.currentQuestionIndex + 1} of {test?.questions?.length || 0}</p>
+              <p><strong>Resume count:</strong> {savedProgress.resumeCount}</p>
+              <p><strong>Auto-saves:</strong> {savedProgress.autoSaveCount}</p>
+            </div>
+
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Choose to resume from where you left off or start the test fresh.
+                Starting fresh will delete your saved progress.
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={resumeTest}
+                className="flex-1"
+              >
+                Resume Test
+              </Button>
+              <Button
+                onClick={startFreshTest}
+                variant="outline"
+                className="flex-1"
+              >
+                Start Fresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!testStarted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -384,6 +644,7 @@ const TakeTest = () => {
                   <li>• Exiting fullscreen may result in auto-submission</li>
                   <li>• Right-click and keyboard shortcuts are disabled</li>
                   <li>• Ensure stable internet connection</li>
+                  <li>• Progress is auto-saved every minute</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -419,8 +680,8 @@ const TakeTest = () => {
             <h1 className="font-bold text-lg text-gray-800">{getDisplayTitle(test)}</h1>
             {test?.testType && (
               <span className={`text-xs px-3 py-1 rounded font-medium border ${test.testType === 'demo'
-                  ? 'bg-gray-100 text-gray-700 border-gray-300'
-                  : 'bg-gray-200 text-gray-800 border-gray-400'
+                ? 'bg-gray-100 text-gray-700 border-gray-300'
+                : 'bg-gray-200 text-gray-800 border-gray-400'
                 }`}>
                 {test.testType === 'demo' ? 'Demo Examination' : 'Official Examination'}
               </span>
@@ -432,6 +693,44 @@ const TakeTest = () => {
           </div>
         </div>
       </header>
+
+      {/* NEW: Progress tracking UI - positioned between header and main content */}
+      {testStarted && !testSubmitted && (
+        <div className="bg-gray-100 border-b">
+          <div className="max-w-6xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-4 text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Save className="w-4 h-4" />
+                  <span>
+                    {lastAutoSave
+                      ? `Last saved: ${lastAutoSave.toLocaleTimeString()}`
+                      : 'Not saved yet'
+                    }
+                  </span>
+                  {isSaving && <span className="text-blue-600">(Saving...)</span>}
+                </div>
+                {autoSaveCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    Auto-saves: {autoSaveCount}
+                  </Badge>
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={manualSave}
+                disabled={isSaving || !isInFullscreen}
+                className="text-xs px-3 py-1 h-7"
+              >
+                <Save className="w-3 h-3 mr-1" />
+                {isSaving ? 'Saving...' : 'Save Now'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Overlays */}
       {!isInFullscreen && testStarted && !testSubmitted && (
@@ -474,7 +773,7 @@ const TakeTest = () => {
       )}
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto flex" style={{ height: 'calc(100vh - 56px)' }}>
+      <div className="max-w-6xl mx-auto flex" style={{ height: testStarted && !testSubmitted ? 'calc(100vh - 105px)' : 'calc(100vh - 56px)' }}>
         {/* Question Section */}
         <section className="flex-1 flex flex-col" style={{ minWidth: 0 }}>
           <Card className="shadow-sm border h-full">
@@ -499,8 +798,8 @@ const TakeTest = () => {
                       <label
                         key={index}
                         className={`flex items-center space-x-3 px-4 py-3 rounded border cursor-pointer transition-all ${answers[test.questions[currentQuestionIndex]._id] === index
-                            ? 'border-gray-400 bg-gray-100'
-                            : 'border-gray-200 bg-white hover:bg-gray-50'
+                          ? 'border-gray-400 bg-gray-100'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
                           }`}
                       >
                         <input
@@ -578,7 +877,7 @@ const TakeTest = () => {
             {/* Question Palette - scrollable */}
             <div
               className="flex-1 overflow-y-auto px-4 py-3"
-              style={{ maxHeight: 'calc(100vh - 240px)' }}
+              style={{ maxHeight: 'calc(100vh - 280px)' }}
             >
               <div className="grid grid-cols-6 gap-2">
                 {test?.questions?.map((_, idx) => {
@@ -629,6 +928,13 @@ const TakeTest = () => {
                       {test?.questions?.filter((_, i) => getQuestionStatus(i) === 'not-answered').length}
                     </span>
                   </div>
+                  {/* NEW: Auto-save info */}
+                  {autoSaveCount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Auto-saves:</span>
+                      <span className="font-medium text-green-600">{autoSaveCount}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <Button

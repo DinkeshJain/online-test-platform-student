@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/button';
-import { LogOut, User, Settings, Menu, X, Home } from 'lucide-react';
+import { LogOut, Menu, X, Home } from 'lucide-react';
 
 // Get the server base URL for static assets
 const SERVER_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://online-test-platform-server-1q1h.onrender.com';
@@ -28,22 +28,22 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center flex-1 min-w-0">
             <Link to="/dashboard" className="flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-800 rounded-xl flex items-center justify-center mr-4 shadow-md">
-                <span className="text-white font-bold text-lg">AU</span>
-              </div>
-              <div className="hidden lg:block">
+              {/* Desktop logo and text */}
+              <div className="hidden lg:flex items-center">
+                <img src="/logo-anu.png" alt="AU" className="mr-4" style={{ height: '48px', width: '48px', objectFit: 'contain', borderRadius: '8px' }} />
                 <span className="text-lg font-bold text-gray-900 leading-tight">
                   <span className="text-gray-900">Acharya Nagarjuna University</span>
                   <br />
                   <span className="text-sm text-green-600 font-semibold">Student Portal</span>
                 </span>
               </div>
-              <div className="block lg:hidden">
-                <span className="text-xl font-bold text-gray-900">AU Student</span>
+              {/* Mobile logo and text */}
+              <div className="flex lg:hidden items-center">
+                <img src="/logo-anu.png" alt="AU" style={{ height: '32px', width: '32px', objectFit: 'contain', marginRight: '6px', borderRadius: '8px' }} />
+                <span className="text-base font-semibold text-gray-900">Student</span>
               </div>
             </Link>
           </div>
-          
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
             {user && (
@@ -59,7 +59,6 @@ const Navbar = () => {
                   <Home className="w-4 h-4 mr-2" />
                   Dashboard
                 </NavLink>
-
                 <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200">
                   {user.studentPhoto ? (
                     <img
@@ -87,7 +86,6 @@ const Navbar = () => {
                     </span>
                   )}
                 </div>
-                
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -100,7 +98,6 @@ const Navbar = () => {
               </>
             )}
           </div>
-
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             {user && (
@@ -119,7 +116,6 @@ const Navbar = () => {
             )}
           </div>
         </div>
-
         {/* Mobile Navigation */}
         {mobileMenuOpen && user && (
           <div className="md:hidden border-t border-gray-200 py-4 space-y-4">
@@ -150,7 +146,6 @@ const Navbar = () => {
                 </span>
               )}
             </div>
-            
             <Button 
               variant="outline" 
               size="sm" 

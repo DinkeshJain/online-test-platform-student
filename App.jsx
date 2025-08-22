@@ -38,19 +38,11 @@ function StudentApp() {
             }}
           />
           <Routes>
-            <Route path="/student/login" element={<StudentLogin />} />
-            <Route path="/student/register" element={<StudentRegister />} />
+            <Route path="/login" element={<StudentLogin />} />
+            <Route path="/register" element={<StudentRegister />} />
             <Route path="/results" element={<PublicResults />} />
-            <Route path="/login" element={<Navigate to="/student/login" replace />} />
-            <Route path="/register" element={<Navigate to="/student/register" replace />} />
-            <Route 
-              path="/student/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/login" element={<Navigate to="/login" replace />} />
+            <Route path="/register" element={<Navigate to="/register" replace />} />
             <Route 
               path="/dashboard" 
               element={
@@ -67,8 +59,8 @@ function StudentApp() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="/student" element={<Navigate to="/student/login" replace />} />
-            <Route path="/" element={<Navigate to="/student/login" replace />} />
+            <Route path="/student" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </Router>

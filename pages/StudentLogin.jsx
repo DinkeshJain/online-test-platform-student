@@ -37,12 +37,12 @@ const StudentLogin = () => {
     if (result.success) {
       // Check if user is student after successful login
       const userData = JSON.parse(localStorage.getItem('user'));
-      if (userData?.role === 'admin') {
-        setError('Admin accounts cannot login through student portal. Please use admin login.');
+      if (userData?.role !== 'student') {
+        setError('Invalid credentials');
         setLoading(false);
         return;
       }
-      
+
       toast.success('Login successful!');
       navigate('/dashboard');
     } else {
@@ -54,88 +54,105 @@ const StudentLogin = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex items-center justify-center p-2">
-      <div className="w-full max-w-md">
-        <Card className="shadow-lg border border-gray-300 overflow-hidden">
-          <CardHeader className="text-center pb-3 bg-white">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-              <GraduationCap className="h-8 w-8 text-gray-600" />
-            </div>
-            <div className="space-y-2">
-              <CardTitle className="text-lg font-bold text-gray-900 leading-tight">
-                <span className="text-gray-800">Acharya Nagarjuna University</span>
-                <br />
-                <span className="text-gray-600 text-sm"> in collaboration with </span>
-                <br />
-                <span className="text-gray-800">National Institute of Fire and Safety</span>
-              </CardTitle>
-              <CardDescription className="text-gray-600 text-sm font-medium">
-                Student Portal - Online Examination
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-1">
-                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                  Username
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Enter your username"
-                    className="pl-10 h-10"
-                    required
-                  />
+    <div className="h-screen bg-gray-50 flex items-center justify-center p-2 relative">
+        <div className="w-full max-w-md">
+          <Card className="shadow-lg border border-gray-300 overflow-hidden">
+            <CardHeader className="text-center pb-3 bg-white">
+              <div className="flex items-center justify-between mb-2" style={{ minHeight: '70px' }}>
+                <img
+                  src="/logo-anu.png"
+                  alt="Acharya Nagarjuna University"
+                  style={{
+                    height: '55px',
+                    width: '55px',
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }}
+                />
+                <div className="flex flex-col items-center flex-1 px-2">
+                  <span className="text-base font-bold text-gray-800">Acharya Nagarjuna University</span>
+                  <span className="text-sm text-gray-600 font-semibold">in collaboration with</span>
+                  <span className="text-sm font-bold text-gray-800">National Institute of Fire and Safety</span>
                 </div>
+                <img
+                  src="/logo-nifs.png"
+                  alt="National Institute of Fire and Safety"
+                  style={{
+                    height: '65px',
+                    width: '65px',
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }}
+                />
               </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Enter your password"
-                    className="pl-10 h-10"
-                    required
-                  />
-                </div>
+              <div className="mt-2 mb-2">
+                <span className="block text-base font-bold text-blue-700">
+                  Student Portal - Online Examination
+                </span>
               </div>
-
-              <Button type="submit" disabled={loading} className="w-full h-10 text-sm mt-4">
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
+            </CardHeader>
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-3">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
-              </Button>
-            </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="space-y-1">
+                  <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                    Username
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="username"
+                      name="username"
+                      type="text"
+                      value={formData.username}
+                      onChange={handleChange}
+                      placeholder="Enter your username"
+                      className="pl-10 h-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Enter your password"
+                      className="pl-10 h-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" disabled={loading} className="w-full h-10 text-sm mt-4">
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign In
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {/* <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-3">Looking for your results?</p>
                 <Button
@@ -147,11 +164,11 @@ const StudentLogin = () => {
                   View Published Results
                 </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </div> */}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
   );
 };
 

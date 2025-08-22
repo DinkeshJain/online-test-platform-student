@@ -46,7 +46,7 @@ const StudentRegister = () => {
     const result = await register(formData.name, formData.username, 'user');
     
     if (result.success) {
-      navigate('/student/dashboard');
+      navigate('/dashboard');
     } else {
       setError(result.message);
     }
@@ -123,7 +123,7 @@ const StudentRegister = () => {
             
             <div className="mt-6 text-center text-sm">
               Already have an account?{' '}
-              <Link to="/student/login" className="text-primary hover:underline font-medium">
+              <Link to="/login" className="text-primary hover:underline font-medium">
                 Sign in
               </Link>
             </div>

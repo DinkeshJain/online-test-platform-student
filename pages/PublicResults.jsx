@@ -123,7 +123,7 @@ const PublicResults = () => {
             </div>
             <Button
               variant="outline"
-              onClick={() => navigate('/student/login')}
+              onClick={() => navigate('/login')}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
