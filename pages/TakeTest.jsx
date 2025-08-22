@@ -197,7 +197,13 @@ const TakeTest = () => {
     }
   }, [savedProgress, testId]);
 
-
+  const enterFullscreen = async () => {
+    if (screenfull.isEnabled) {
+      try { await screenfull.request(); return true; }
+      catch (e) { return false; }
+    }
+    return false;
+  };
   // NEW: Start fresh test function
   const startFreshTest = useCallback(async () => {
     // Clear any saved progress and start fresh
@@ -218,6 +224,10 @@ const TakeTest = () => {
 
   const handleSubmitTest = useCallback(async () => {
     if (testSubmittedRef.current) return;
+    if (!testRef.current || !testRef.current.questions) {
+      toast.error('Test data not loaded properly');
+      return;
+    }
     setTestSubmitted(true);
     if (screenfull.isEnabled && screenfull.isFullscreen) screenfull.exit();
 
@@ -457,14 +467,6 @@ const TakeTest = () => {
 
   const recordFullscreenExit = async () => {
     try { await api.post('/submissions/fullscreen-exit', { testId }); } catch (e) { }
-  };
-
-  const enterFullscreen = async () => {
-    if (screenfull.isEnabled) {
-      try { await screenfull.request(); return true; }
-      catch (e) { return false; }
-    }
-    return false;
   };
 
   const startTest = async () => {
