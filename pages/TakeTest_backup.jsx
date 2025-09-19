@@ -49,6 +49,10 @@ const TakeTest = () => {
   const timeLeftRef = useRef(0);
   const testRef = useRef(null);
 
+  // ✅ CRITICAL: Refs for state protection against corruption
+  const answersRef = useRef({});
+  const reviewFlagsRef = useRef({});
+
   // NEW: Heartbeat interval ref
   const heartbeatIntervalRef = useRef(null);
 
@@ -64,6 +68,10 @@ const TakeTest = () => {
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
   useEffect(() => { testRef.current = test; }, [test]);
 
+  // ✅ CRITICAL: Keep refs synchronized with state for protection
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { reviewFlagsRef.current = reviewFlags; }, [reviewFlags]);
+
   // // Enhanced debug test state function
   // const debugTestState = useCallback(() => {
   //   console.log('=== ENHANCED TEST STATE DEBUG ===');
@@ -74,7 +82,7 @@ const TakeTest = () => {
   //   console.log('timeLeft:', timeLeft);
   //   console.log('test loaded:', !!test);
   //   console.log('test questions count:', test?.questions?.length || 0);
-    
+
   //   // Detailed answers debugging
   //   console.log('=== ANSWERS ANALYSIS ===');
   //   console.log('answers object:', answers);
@@ -84,13 +92,13 @@ const TakeTest = () => {
   //   Object.entries(answers).forEach(([questionId, answer], index) => {
   //     console.log(`Answer ${index + 1}: Q-${questionId} = ${answer} (type: ${typeof answer})`);
   //   });
-    
+
   //   // Check if answers object is somehow corrupted
   //   console.log('Is answers an object?', typeof answers === 'object');
   //   console.log('Is answers null?', answers === null);
   //   console.log('Is answers undefined?', answers === undefined);
   //   console.log('Is answers empty object?', Object.keys(answers).length === 0);
-    
+
   //   // Check for any questions without answers
   //   if (test?.questions) {
   //     console.log('=== MISSING ANSWERS CHECK ===');
@@ -103,20 +111,20 @@ const TakeTest = () => {
   //       }
   //     });
   //   }
-    
+
   //   // Memory and state info
   //   console.log('=== STATE INFO ===');
   //   console.log('Last saved:', lastSavedAt);
   //   console.log('Is saving:', isSaving);
   //   console.log('Network status:', networkStatus);
-    
+
   //   console.log('=====================================');
   // }, [testStarted, testSubmitted, currentQuestionIndex, answers, timeLeft, test, lastSavedAt, isSaving, networkStatus]);
 
   // Debug keyboard shortcut (development only)
   // useEffect(() => {
   //   if (!isDevelopment) return;
-    
+
   //   const handleDebugKey = (e) => {
   //     // Ctrl+Shift+D to debug test state
   //     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -124,7 +132,7 @@ const TakeTest = () => {
   //       debugTestState();
   //     }
   //   };
-    
+
   //   document.addEventListener('keydown', handleDebugKey);
   //   return () => document.removeEventListener('keydown', handleDebugKey);
   // }, [debugTestState]);
@@ -270,14 +278,19 @@ const TakeTest = () => {
     if (!testStarted || testSubmitted || !test) return;
 
     try {
+      // ✅ CRITICAL: Use refs for most current data to prevent race conditions
+      const currentAnswers = answersRef.current || answers;
+      const currentReviewFlags = reviewFlagsRef.current || reviewFlags;
+
       const saveData = {
         testId,
-        answers,
-        reviewFlags,
+        answers: currentAnswers,
+        reviewFlags: currentReviewFlags,
         currentQuestionIndex,
         timeLeft: timeLeftRef.current,
         testStartedAt,
         lastSavedAt: new Date().toISOString(),
+        answerCount: Object.keys(currentAnswers).length, // Add count for validation
         testStructure: {
           ...test,
           questions: test.questions.map((q, index) => ({
@@ -288,14 +301,16 @@ const TakeTest = () => {
         }
       };
 
+      // ✅ CRITICAL: Multiple localStorage saves for redundancy
       localStorage.setItem(`test_progress_${testId}`, JSON.stringify(saveData));
-      
-      // Note: Only backend saves update the displayed "Last saved" time
-      
-      // Silent auto-save - no toast notification for automatic saves
-      
+      localStorage.setItem(`test_progress_backup_${testId}`, JSON.stringify(saveData));
+      localStorage.setItem(`answers_only_${testId}`, JSON.stringify(currentAnswers));
+
+      // ✅ Add timestamp tracking
+      localStorage.setItem(`last_save_${testId}`, new Date().toISOString());
+
     } catch (error) {
-      // Silent error handling for localStorage saves
+      console.error('Failed to save to localStorage:', error);
     }
   }, [testId, answers, reviewFlags, currentQuestionIndex, testStartedAt, test, testStarted, testSubmitted]);
 
@@ -308,7 +323,7 @@ const TakeTest = () => {
       // Enhanced answer collection with multiple validation approaches (same as handleSubmitTest)
       const validAnswers = [];
       let correctAnswersCount = 0;
-      
+
       // Method 1: Direct state iteration with enhanced validation
       Object.entries(answers).forEach(([questionId, selectedAnswer]) => {
         // Find the question in the test
@@ -316,17 +331,17 @@ const TakeTest = () => {
         if (!question) {
           return;
         }
-        
+
         const questionIndex = test.questions.findIndex(q => q._id === questionId);
-        
+
         // Enhanced: More flexible validation that accepts strings and converts them
         let validatedAnswer = selectedAnswer;
-        
+
         // Convert string numbers to actual numbers
         if (typeof selectedAnswer === 'string' && !isNaN(selectedAnswer)) {
           validatedAnswer = parseInt(selectedAnswer, 10);
         }
-        
+
         // Validate answer with multiple checks
         const isValidAnswer = (
           validatedAnswer !== null &&
@@ -342,7 +357,7 @@ const TakeTest = () => {
           // Calculate isCorrect for this answer
           let isCorrect = false;
           const shuffledToOriginal = question.shuffledToOriginal || [0, 1, 2, 3];
-          
+
           if (shuffledToOriginal && Array.isArray(shuffledToOriginal) && shuffledToOriginal.length > 0) {
             const originalIndex = shuffledToOriginal[validatedAnswer];
             if (originalIndex !== undefined && originalIndex !== null) {
@@ -354,11 +369,11 @@ const TakeTest = () => {
           } else {
             isCorrect = question.correctAnswer === validatedAnswer;
           }
-          
+
           if (isCorrect) {
             correctAnswersCount++;
           }
-          
+
           validAnswers.push({
             questionId,
             selectedAnswer: validatedAnswer,
@@ -374,18 +389,18 @@ const TakeTest = () => {
       // Method 2: Question-based iteration as backup/verification
       const backupAnswers = [];
       let backupCorrectCount = 0;
-      
+
       test.questions.forEach((question, index) => {
         const selectedAnswer = answers[question._id];
-        
+
         if (selectedAnswer !== undefined && selectedAnswer !== null) {
           // Apply same enhanced validation
           let validatedAnswer = selectedAnswer;
-          
+
           if (typeof selectedAnswer === 'string' && !isNaN(selectedAnswer)) {
             validatedAnswer = parseInt(selectedAnswer, 10);
           }
-          
+
           const isValidAnswer = (
             validatedAnswer !== null &&
             validatedAnswer !== undefined &&
@@ -400,7 +415,7 @@ const TakeTest = () => {
             // Calculate isCorrect for this answer
             let isCorrect = false;
             const shuffledToOriginal = question.shuffledToOriginal || [0, 1, 2, 3];
-            
+
             if (shuffledToOriginal && Array.isArray(shuffledToOriginal) && shuffledToOriginal.length > 0) {
               const originalIndex = shuffledToOriginal[validatedAnswer];
               if (originalIndex !== undefined && originalIndex !== null) {
@@ -411,11 +426,11 @@ const TakeTest = () => {
             } else {
               isCorrect = question.correctAnswer === validatedAnswer;
             }
-            
+
             if (isCorrect) {
               backupCorrectCount++;
             }
-            
+
             backupAnswers.push({
               questionId: question._id,
               selectedAnswer: validatedAnswer,
@@ -446,7 +461,7 @@ const TakeTest = () => {
       test.questions.forEach((question, index) => {
         const providedAnswer = answers[question._id];
         const wasIncluded = finalAnswers.some(a => a.questionId === question._id);
-        
+
         // Only count as rejected if an answer was provided but not included
         if (providedAnswer !== undefined && providedAnswer !== null && !wasIncluded) {
           actualRejectedCount++;
@@ -474,11 +489,11 @@ const TakeTest = () => {
       };
 
       const response = await api.post(`/submissions/auto-save/${testId}`, saveData);
-      
+
       if (response.data.message) {
         // Update lastBackendSavedAt to reflect backend save time
         setLastBackendSavedAt(new Date());
-        
+
         // Show success toast only for manual saves, not auto-saves
         if (showToast) {
           toast.success(
@@ -490,7 +505,7 @@ const TakeTest = () => {
       }
     } catch (error) {
       console.error('❌ Backend save failed:', error);
-      
+
       // Store failed data for retry when online
       setPendingData({
         answers: { ...answers },
@@ -498,7 +513,7 @@ const TakeTest = () => {
         currentQuestionIndex,
         timeLeft: timeLeftRef.current
       });
-      
+
       throw error; // Re-throw to be handled by calling function
     }
   }, [testId, answers, reviewFlags, currentQuestionIndex, testStartedAt, test, testStarted, testSubmitted]);
@@ -506,12 +521,40 @@ const TakeTest = () => {
   // Load from localStorage
   const loadFromLocalStorage = useCallback(() => {
     try {
-      const savedData = localStorage.getItem(`test_progress_${testId}`);
+      // ✅ CRITICAL: Try primary storage first, then backup
+      let savedData = localStorage.getItem(`test_progress_${testId}`);
+      let parsed = null;
+
       if (savedData) {
-        const parsed = JSON.parse(savedData);
-        // console.log('� Loading from localStorage:', parsed);
-        
-        setAnswers(validateAnswersObject(parsed.answers || {}));
+        parsed = JSON.parse(savedData);
+      } else {
+        // Try backup storage
+        savedData = localStorage.getItem(`test_progress_backup_${testId}`);
+        if (savedData) {
+          parsed = JSON.parse(savedData);
+          console.log('🔄 Recovered from backup localStorage');
+        }
+      }
+
+      if (parsed) {
+        // Validate and clean answers
+        const validatedAnswers = validateAnswersObject(parsed.answers || {});
+
+        // ✅ CRITICAL: Double-check with answers-only backup if main answers are empty
+        if (Object.keys(validatedAnswers).length === 0) {
+          const answersOnly = localStorage.getItem(`answers_only_${testId}`);
+          if (answersOnly) {
+            const backupAnswers = JSON.parse(answersOnly);
+            const validatedBackup = validateAnswersObject(backupAnswers);
+            if (Object.keys(validatedBackup).length > 0) {
+              console.log('🔄 Recovered answers from answers-only backup');
+              setAnswers(validatedBackup);
+            }
+          }
+        } else {
+          setAnswers(validatedAnswers);
+        }
+
         setReviewFlags(parsed.reviewFlags || {});
         setCurrentQuestionIndex(parsed.currentQuestionIndex || 0);
         setTimeLeft(parsed.timeLeft || 0);
@@ -519,7 +562,6 @@ const TakeTest = () => {
         setLastSavedAt(parsed.lastSavedAt ? new Date(parsed.lastSavedAt) : null);
 
         if (parsed.testStructure) {
-          // console.log('Using saved test structure from localStorage');
           setTest(parsed.testStructure);
         }
 
@@ -528,6 +570,22 @@ const TakeTest = () => {
       return false;
     } catch (error) {
       console.error('Failed to load from localStorage:', error);
+
+      // ✅ CRITICAL: Try emergency answer recovery
+      try {
+        const emergencyAnswers = localStorage.getItem(`answers_backup_${testId}`);
+        if (emergencyAnswers) {
+          const backup = JSON.parse(emergencyAnswers);
+          if (backup.answers && Object.keys(backup.answers).length > 0) {
+            console.log('🚨 Emergency answer recovery successful');
+            setAnswers(backup.answers);
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Emergency recovery failed:', e);
+      }
+
       return false;
     }
   }, [testId, validateAnswersObject]);
@@ -535,12 +593,12 @@ const TakeTest = () => {
   // Manual save function for button - saves to both localStorage and backend
   const manualSave = useCallback(async () => {
     if (!testStarted || testSubmitted) return;
-    
+
     setIsSaving(true);
     try {
       // First save to localStorage (instant)
       saveToLocalStorage();
-      
+
       // Then save to backend if online
       if (isOnline && test && Object.keys(answers).length > 0) {
         await saveToBackend(true); // Manual save: show toast
@@ -726,18 +784,18 @@ const TakeTest = () => {
       // Set test started timestamp
       const startTime = new Date().toISOString();
       setTestStartedAt(startTime);
-      
+
       // Start the test
       setTestStarted(true);
       toast.success('Test started!');
-      
+
       // Save initial state to localStorage
       saveToLocalStorage();
-      
+
     } catch (error) {
       console.error('❌ Error starting test:', error);
       toast.error('Error starting test, but you can continue');
-      
+
       // Still start the test even if submission creation fails
       setTestStartedAt(new Date().toISOString());
       setTestStarted(true);
@@ -747,37 +805,67 @@ const TakeTest = () => {
   // ✅ ENHANCED: Submit only answered questions with proper originalQuestionNumber mapping
   const handleSubmitTest = useCallback(async () => {
     if (testSubmittedRef.current) return;
-    
+
+    // ✅ CRITICAL: Use multiple sources for answers - check for empty state corruption
+    let finalAnswersObject = answersRef.current || answers || {};
+
+    // ✅ CRITICAL: Emergency recovery if answers are empty
+    if (Object.keys(finalAnswersObject).length === 0) {
+      console.warn('🚨 Answers empty during submission - attempting recovery');
+
+      try {
+        // Try localStorage recovery
+        const emergencyData = localStorage.getItem(`answers_only_${testId}`);
+        if (emergencyData) {
+          const recovered = JSON.parse(emergencyData);
+          finalAnswersObject = validateAnswersObject(recovered);
+          console.log('🔄 Recovered answers for submission:', Object.keys(finalAnswersObject).length);
+        }
+
+        // Try backup recovery
+        if (Object.keys(finalAnswersObject).length === 0) {
+          const backupData = localStorage.getItem(`answers_backup_${testId}`);
+          if (backupData) {
+            const backup = JSON.parse(backupData);
+            finalAnswersObject = validateAnswersObject(backup.answers || {});
+            console.log('🔄 Recovered from backup for submission:', Object.keys(finalAnswersObject).length);
+          }
+        }
+      } catch (e) {
+        console.error('Recovery attempt failed:', e);
+      }
+    }
+
     // Enhanced test data validation
     if (!testRef.current || !testRef.current.questions || !Array.isArray(testRef.current.questions) || testRef.current.questions.length === 0) {
       toast.error('Test data not loaded properly. Please refresh and try again.');
       setTestSubmitted(false);
       return;
     }
-    
+
     setTestSubmitted(true);
 
-    // Enhanced answer collection with multiple validation approaches
+    // Enhanced answer collection with recovery data
     const validAnswers = [];
-    
-    // Method 1: Direct state iteration with enhanced validation
-    Object.entries(answers).forEach(([questionId, selectedAnswer]) => {
+
+    // ✅ CRITICAL: Process recovered answers instead of potentially empty state
+    Object.entries(finalAnswersObject).forEach(([questionId, selectedAnswer]) => {
       // Find the question in the test
       const question = testRef.current.questions.find(q => q._id === questionId);
       if (!question) {
         return;
       }
-      
+
       const questionIndex = testRef.current.questions.findIndex(q => q._id === questionId);
-      
+
       // Enhanced: More flexible validation that accepts strings and converts them
       let validatedAnswer = selectedAnswer;
-      
+
       // Convert string numbers to actual numbers
       if (typeof selectedAnswer === 'string' && !isNaN(selectedAnswer)) {
         validatedAnswer = parseInt(selectedAnswer, 10);
       }
-      
+
       // Validate answer with multiple checks
       const isValidAnswer = (
         validatedAnswer !== null &&
@@ -803,18 +891,19 @@ const TakeTest = () => {
 
     // Method 2: Question-based iteration as backup/verification
     const backupAnswers = [];
-    
+
     testRef.current.questions.forEach((question, index) => {
-      const selectedAnswer = answers[question._id];
-      
+      // ✅ Use recovered answers instead of potentially empty state
+      const selectedAnswer = finalAnswersObject[question._id];
+
       if (selectedAnswer !== undefined && selectedAnswer !== null) {
         // Apply same enhanced validation
         let validatedAnswer = selectedAnswer;
-        
+
         if (typeof selectedAnswer === 'string' && !isNaN(selectedAnswer)) {
           validatedAnswer = parseInt(selectedAnswer, 10);
         }
-        
+
         const isValidAnswer = (
           validatedAnswer !== null &&
           validatedAnswer !== undefined &&
@@ -840,18 +929,18 @@ const TakeTest = () => {
 
     // Use the method that found more answers, or prefer state method if equal
     const finalAnswers = validAnswers.length >= backupAnswers.length ? validAnswers : backupAnswers;
-    
+
     // Calculate statistics correctly - don't treat unanswered as rejected
     const totalQuestions = testRef.current.questions.length;
     const answeredCount = finalAnswers.length;
     const unansweredCount = totalQuestions - answeredCount;
-    
+
     // Only count actual rejections (answers that were provided but failed validation)
     let actualRejectedCount = 0;
     testRef.current.questions.forEach((question, index) => {
       const providedAnswer = answers[question._id];
       const wasIncluded = finalAnswers.some(a => a.questionId === question._id);
-      
+
       // Only count as rejected if an answer was provided but not included
       if (providedAnswer !== undefined && providedAnswer !== null && !wasIncluded) {
         actualRejectedCount++;
@@ -859,7 +948,7 @@ const TakeTest = () => {
     });
 
     // Only warn about actual rejections, not unanswered questions
-    if (actualRejectedCount > 0) {      
+    if (actualRejectedCount > 0) {
       // Only show confirmation dialog for actual rejected answers (not unanswered)
       if (actualRejectedCount > 2) {
         const proceed = confirm(
@@ -891,6 +980,21 @@ const TakeTest = () => {
     //   }))
     // });
 
+    // ✅ CRITICAL: Debug logging for production troubleshooting
+    console.log('📋 SUBMISSION DEBUG:', {
+      totalQuestions: testRef.current.questions.length,
+      answersInState: Object.keys(answers).length,
+      answersInRef: Object.keys(answersRef.current).length,
+      answersRecovered: Object.keys(finalAnswersObject).length,
+      validAnswersForSubmission: finalAnswers.length,
+      sampleValidAnswer: finalAnswers[0] || 'None',
+      allAnswerIds: finalAnswers.map(a => ({
+        id: a.questionId,
+        answer: a.selectedAnswer,
+        origNum: a.originalQuestionNumber
+      }))
+    });
+
     const submissionData = {
       testId,
       answers: finalAnswers,
@@ -906,12 +1010,13 @@ const TakeTest = () => {
     try {
       const response = await api.post('/submissions', submissionData);
 
-      // Clear pending data and localStorage on successful submission
-      setPendingData(null);
+      // ✅ CRITICAL: Clear ALL localStorage data on successful submission
       localStorage.removeItem(`test_progress_${testId}`);
-      
-      // Clear submission ID from localStorage
+      localStorage.removeItem(`test_progress_backup_${testId}`);
+      localStorage.removeItem(`answers_only_${testId}`);
+      localStorage.removeItem(`answers_backup_${testId}`);
       localStorage.removeItem(`submission_id_${testId}`);
+      localStorage.removeItem(`last_save_${testId}`);
 
       const message = response.data.answeredQuestions
         ? `Test submitted! Answered ${response.data.answeredQuestions}/${response.data.totalQuestions} questions.`
@@ -961,25 +1066,38 @@ const TakeTest = () => {
     return () => clearTimeout(timer);
   }, [testStarted, timeLeft, testSubmitted, handleSubmitTest]);
 
-  // Auto-save functionality - saves every 2 minutes
+  // Auto-save functionality - saves every 90 seconds with answer verification
   useEffect(() => {
     if (!testStarted || testSubmitted) return;
-    
-    // Save immediately when test starts
+
+    // ✅ CRITICAL: Enhanced auto-save with answer verification
     const saveImmediately = async () => {
-      await saveToBackend(false); // Auto-save: don't show toast
+      // Verify answers exist before saving
+      const currentAnswers = answersRef.current || answers;
+      if (Object.keys(currentAnswers).length > 0) {
+        try {
+          await saveToBackend(false); // Auto-save: don't show toast
+        } catch (error) {
+          console.warn('Auto-save to backend failed, saving to localStorage only:', error);
+          saveToLocalStorage(); // Fallback to localStorage
+        }
+      } else {
+        console.warn('⚠️ Auto-save skipped: no answers to save');
+        // Still save localStorage for progress tracking
+        saveToLocalStorage();
+      }
     };
-    
+
     // Set up interval for auto-save every 90 seconds
     const autoSaveInterval = setInterval(saveImmediately, 90000);
-    
+
     // Trigger first save after 5 seconds to establish session
     setTimeout(saveImmediately, 5000);
-    
+
     return () => {
       clearInterval(autoSaveInterval);
     };
-  }, [testStarted, testSubmitted, saveToBackend]); // Removed 'answers' to prevent interval reset
+  }, [testStarted, testSubmitted, answers, saveToBackend, saveToLocalStorage]); // Include answers dependency
 
   const startTest = async () => {
     await startFreshTest();
@@ -989,12 +1107,12 @@ const TakeTest = () => {
   const handleAnswerChange = (questionId, answerIndex) => {
     // Enhanced validation and type conversion
     let validatedAnswer = answerIndex;
-    
+
     // Convert string numbers to actual numbers
     if (typeof answerIndex === 'string' && !isNaN(answerIndex)) {
       validatedAnswer = parseInt(answerIndex, 10);
     }
-    
+
     // Comprehensive validation
     const isValidIndex = (
       validatedAnswer !== null &&
@@ -1007,19 +1125,53 @@ const TakeTest = () => {
     );
 
     if (isValidIndex) {
-      // Update answers state with the validated number
+      // ✅ CRITICAL: Use functional update with protection against state corruption
       setAnswers(prev => {
-        const newAnswers = { ...prev, [questionId]: validatedAnswer };
+        // Protect against state corruption
+        const safePrev = prev || {};
+        const newAnswers = { ...safePrev, [questionId]: validatedAnswer };
+
+        // ✅ CRITICAL: Immediate localStorage backup on every answer change
+        try {
+          const backupData = {
+            testId,
+            answers: newAnswers,
+            timestamp: new Date().toISOString(),
+            questionId,
+            answerValue: validatedAnswer
+          };
+          localStorage.setItem(`answers_backup_${testId}`, JSON.stringify(backupData));
+        } catch (e) {
+          console.error('Failed to backup answer:', e);
+        }
+
         return newAnswers;
       });
-      
+
       // Remove review flag if answer is provided
       setReviewFlags(prev => {
-        const newFlags = { ...prev };
+        const safePrev = prev || {};
+        const newFlags = { ...safePrev };
         delete newFlags[questionId];
         return newFlags;
       });
-      
+
+      // ✅ CRITICAL: Immediate validation to catch state corruption
+      setTimeout(() => {
+        const currentAnswers = answersRef.current;
+        if (!currentAnswers[questionId]) {
+          console.error('❌ CRITICAL: Answer was lost after setting!', {
+            questionId,
+            answerIndex: validatedAnswer,
+            currentState: currentAnswers,
+            allKeys: Object.keys(currentAnswers)
+          });
+
+          // Emergency recovery attempt
+          setAnswers(prev => ({ ...prev, [questionId]: validatedAnswer }));
+        }
+      }, 100);
+
     } else {
       // Alert user about the issue
       toast.error(`Answer validation failed for question. Please try selecting the option again.`, {
@@ -1546,5 +1698,35 @@ const TakeTest = () => {
     </div>
   );
 };
+
+// ✅ CRITICAL: Emergency debugging function for production
+if (typeof window !== 'undefined') {
+  window.debugAnswers = () => {
+    const testId = window.location.pathname.split('/').pop();
+    const current = {};
+    const state = {};
+
+    try {
+      // Try to access current state (this will only work if TakeTest is mounted)
+      console.log('🔍 ANSWER DEBUG for testId:', testId);
+      console.log('LocalStorage Primary:', localStorage.getItem(`test_progress_${testId}`));
+      console.log('LocalStorage Backup:', localStorage.getItem(`test_progress_backup_${testId}`));
+      console.log('Answers Only:', localStorage.getItem(`answers_only_${testId}`));
+      console.log('Answers Backup:', localStorage.getItem(`answers_backup_${testId}`));
+      console.log('Last Save:', localStorage.getItem(`last_save_${testId}`));
+
+      return {
+        testId,
+        hasMainStorage: !!localStorage.getItem(`test_progress_${testId}`),
+        hasBackupStorage: !!localStorage.getItem(`test_progress_backup_${testId}`),
+        hasAnswersOnly: !!localStorage.getItem(`answers_only_${testId}`),
+        hasAnswersBackup: !!localStorage.getItem(`answers_backup_${testId}`)
+      };
+    } catch (e) {
+      console.error('Debug failed:', e);
+      return { error: e.message };
+    }
+  };
+}
 
 export default TakeTest;
