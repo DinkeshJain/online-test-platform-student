@@ -343,6 +343,20 @@
 
 /* Print styles */
 @media print {
+    /* Remove browser default headers and footers */
+    @page {
+        margin: 0.5in;
+        size: A4;
+        
+        /* Remove default headers and footers */
+        @top-left { content: ""; }
+        @top-center { content: ""; }
+        @top-right { content: ""; }
+        @bottom-left { content: ""; }
+        @bottom-center { content: ""; }
+        @bottom-right { content: ""; }
+    }
+    
     .no-print {
         display: none !important;
     }
@@ -392,5 +406,145 @@
 
     .modal-content {
         @apply bg-gray-800;
+    }
+}
+
+/* Print Styles */
+@media print {
+    /* Hide elements that shouldn't be printed */
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Page settings */
+    @page {
+        margin: 0.5in;
+        size: A4;
+    }
+    
+    /* Reset body and html for print */
+    body, html {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    
+    /* Remove unnecessary spacing and styling */
+    .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+    }
+    
+    /* Card styling for print */
+    .print-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+    }
+    
+    .print-content .card,
+    .print-content [class*="card"] {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+    }
+    
+    /* Ensure table borders show up in print */
+    table {
+        border-collapse: collapse !important;
+    }
+    
+    table, th, td {
+        border: 1px solid black !important;
+    }
+    
+    /* Text color fixes for print */
+    * {
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Page breaks */
+    .page-break-before {
+        page-break-before: always;
+    }
+    
+    .page-break-after {
+        page-break-after: always;
+    }
+    
+    .avoid-page-break {
+        page-break-inside: avoid;
+    }
+    
+    /* Remove all margins and paddings from main containers */
+    .mx-auto, .py-8, .px-4, .space-y-6, .max-w-4xl {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: none !important;
+    }
+    
+    /* Results page specific print styles */
+    .print-content {
+        padding: 0.5in !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+    }
+    
+    .avoid-page-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Ensure proper page breaks between students */
+    .avoid-page-break:not(:first-child) {
+        page-break-before: always;
+        break-before: page;
+    }
+    
+    /* Table styles for print */
+    table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    
+    th, td {
+        border: 1px solid black !important;
+        padding: 8px !important;
+        font-size: 14px !important;
+    }
+    
+    th {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Header styles */
+    .text-center h1, .text-center h2, .text-center h3 {
+        margin-bottom: 8px !important;
+    }
+    
+    /* Student info section */
+    .mb-8.space-y-1 {
+        margin-bottom: 20px !important;
+    }
+    
+    .mb-8.space-y-1 > div {
+        margin-bottom: 4px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Signature section */
+    .justify-end {
+        margin-top: 40px !important;
     }
 }

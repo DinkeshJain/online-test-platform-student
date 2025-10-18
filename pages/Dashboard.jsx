@@ -5,7 +5,7 @@ import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Clock, User, Calendar, EyeOff, FileText } from 'lucide-react';
+import { Clock, User, Calendar, EyeOff, FileText, Award, BookOpen } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 const Dashboard = () => {
@@ -183,6 +183,72 @@ const Dashboard = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Results Section */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-blue-200 rounded-lg">
+                  <Award className="h-5 w-5 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">View Results</h2>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Regular Results */}
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/my-results')}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg">
+                        <BookOpen className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Regular Results</h3>
+                        <p className="text-sm text-gray-600">View your regular examination results</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/my-results');
+                      }}
+                    >
+                      View Regular Results
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Supplementary Results */}
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/supplementary-results')}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg">
+                        <Award className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Supplementary Results</h3>
+                        <p className="text-sm text-gray-600">View your supplementary examination results</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/supplementary-results');
+                      }}
+                    >
+                      View Supplementary Results
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>

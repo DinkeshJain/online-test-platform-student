@@ -301,10 +301,9 @@ const TakeTest = () => {
 
   // Save to backend (for manual save and sync)
   const saveToBackend = useCallback(async (showToast = true) => {
-    if (!testStarted || testSubmitted || !test) return;
+    if (!testStartedRef.current || testSubmittedRef.current || !testRef.current) return;
 
     try {
-
       // Enhanced answer collection with multiple validation approaches (same as handleSubmitTest)
       const validAnswers = [];
       let correctAnswersCount = 0;

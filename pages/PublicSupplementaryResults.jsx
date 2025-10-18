@@ -1,4 +1,4 @@
-// PublicResults.jsx
+// PublicSupplementaryResults.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Search, FileText } from 'lucide-react';
 
-const PublicResults = () => {
+const PublicSupplementaryResults = () => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [studentResults, setStudentResults] = useState(null);
@@ -27,18 +27,18 @@ const PublicResults = () => {
             setLoading(true);
             setError('');
             
-            const response = await api.get(`/results/student-results/${searchQuery.trim()}`);
+            const response = await api.get(`/results/supplementary-results/${searchQuery.trim()}`);
 
             if (response.data.success) {
                 setStudentResults(response.data);
-                toast.success('Results found successfully');
+                toast.success('Supplementary results found successfully');
             } else {
                 setStudentResults(null);
-                toast.error('No results found');
+                toast.error('No supplementary results found');
             }
         } catch (error) {
-            console.error('Error searching results:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to search results';
+            console.error('Error searching supplementary results:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to search supplementary results';
             setError(errorMessage);
             toast.error(errorMessage);
             setStudentResults(null);
@@ -105,8 +105,8 @@ const PublicResults = () => {
                 </div>
                 
                 <div className="text-center mb-8 no-print">
-                    <h1 className="text-2xl font-bold mb-2">Student Examination Results</h1>
-                    <p className="text-gray-600">Enter your enrollment number to view your results</p>
+                    <h1 className="text-2xl font-bold mb-2">Supplementary Examination Results</h1>
+                    <p className="text-gray-600">Enter your enrollment number to view your supplementary results</p>
                 </div>
 
                 <Card className="overflow-hidden bg-white shadow-md no-print">
@@ -244,4 +244,4 @@ const PublicResults = () => {
     );
 };
 
-export default PublicResults;
+export default PublicSupplementaryResults;

@@ -5,9 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { GraduationCap, Mail, Lock, ArrowRight, FileText } from 'lucide-react';
+import { GraduationCap, Mail, Lock, ArrowRight, FileText, Search } from 'lucide-react';
 
 const StudentLogin = () => {
   const [formData, setFormData] = useState({
@@ -151,20 +151,6 @@ const StudentLogin = () => {
                   )}
                 </Button>
               </form>
-
-              {/* <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-3">Looking for your results?</p>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/results')}
-                  className="w-full h-10 text-sm"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Published Results
-                </Button>
-              </div>
-            </div> */}
             </CardContent>
           </Card>
         </div>
