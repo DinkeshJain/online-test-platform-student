@@ -7,8 +7,6 @@ import StudentRegister from './pages/StudentRegister';
 import Dashboard from './pages/Dashboard';
 import TakeTest from './pages/TakeTest';
 import PublicResults from './pages/PublicResults';
-import PublicSupplementaryResults from './pages/PublicSupplementaryResults';
-import LandingPage from './pages/LandingPage';
 import './App.css';
 import './index.css';
 
@@ -40,12 +38,10 @@ function StudentApp() {
             }}
           />
           <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<StudentLogin />} />
             <Route path="/register" element={<StudentRegister />} />
             <Route path="/results" element={<PublicResults />} />
-            <Route path="/supplementary-results" element={<PublicSupplementaryResults />} />
-            <Route path="/login" element={<Navigate to="/login" replace />} />
-            <Route path="/register" element={<Navigate to="/register" replace />} />
             <Route 
               path="/dashboard" 
               element={
@@ -62,9 +58,7 @@ function StudentApp() {
                 </ProtectedRoute>
               } 
             />
-
-            <Route path="/student" element={<Navigate to="/" replace />} />
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/student" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </Router>

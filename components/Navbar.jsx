@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { LogOut, Menu, X, Home } from 'lucide-react';
 
 // Get the server base URL for static assets
-const SERVER_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://online-test-platform-server-3w2t.onrender.com';
+const SERVER_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://online-test-platform-server-1q1h.onrender.com';
 
 const Navbar = () => {
   const { user, logout, isAdmin } = useAuth();

@@ -97,16 +97,8 @@ const PublicResults = () => {
     return (
         <div className="container mx-auto py-8 px-4">
             <div className="max-w-4xl mx-auto space-y-6">
-                {/* Navigation */}
-                <div className="flex justify-center mb-6 no-print">
-                    <Button variant="outline" onClick={() => navigate('/')} size="sm">
-                        ← Home
-                    </Button>
-                </div>
-                
                 <div className="text-center mb-8 no-print">
-                    <h1 className="text-2xl font-bold mb-2">Student Examination Results</h1>
-                    <p className="text-gray-600">Enter your enrollment number to view your results</p>
+                    <h1 className="text-2xl font-bold mb-2">August-2025 Examination Results</h1>
                 </div>
 
                 <Card className="overflow-hidden bg-white shadow-md no-print">
@@ -158,15 +150,13 @@ const PublicResults = () => {
                         <Card className="overflow-hidden bg-white shadow-md print-content">
                             <CardContent className="p-8">
                                 {studentResults.results.map((semester, index) => (
-                                <div key={index} className="border-b pb-8 last:border-b-0 mb-8 last:mb-0 avoid-page-break">
-                                    {/* Header */}
-                                    <div className="text-center mb-8">
-                                        <h1 className="text-2xl font-bold mb-2">Acharya Nagarjuna University</h1>
-                                        <h2 className="text-xl font-semibold mb-2">Centre for Distance Education - Online Diploma Programs</h2>
-                                        <h3 className="text-lg font-semibold">August-2025 Examination Results</h3>
-                                    </div>
-                                    
-                                    {/* Student Information */}
+                                    <div key={index} className="border-b pb-8 last:border-b-0 mb-8 last:mb-0 avoid-page-break">
+                                        {/* Header */}
+                                        <div className="text-center mb-8">
+                                            <h1 className="text-2xl font-bold mb-2">Acharya Nagarjuna University</h1>
+                                            <h2 className="text-xl font-semibold mb-2">Centre for Distance Education - Online Diploma Programs</h2>
+                                            <h3 className="text-lg font-semibold">August-2025 Examination Results</h3>
+                                        </div>                                    {/* Student Information */}
                                     <div className="mb-8 space-y-1 text-left">
                                         <div>
                                             <span className="font-semibold">Enrollment No : </span>{studentResults.enrollmentNo}
